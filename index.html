@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Collection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 700px;
+            margin: 30px auto;
+            padding: 0 20px;
+            color: #333;
+        }
+        h1 { color: #2c3e50; }
+        h2 { color: #34495e; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+
+        form {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        input {
+            padding: 8px;
+            margin: 5px 5px 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 8px 16px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover { background: #2980b9; }
+
+        ul { list-style: none; padding: 0; }
+        li {
+            padding: 10px;
+            margin-bottom: 8px;
+            background: #ecf0f1;
+            border-left: 4px solid #3498db;
+            border-radius: 4px;
+        }
+        .error  { color: #c0392b; font-weight: bold; }
+        .success { color: #27ae60; font-weight: bold; }
+        .empty  { color: #7f8c8d; font-style: italic; }
+    </style>
+</head>
+<body>
+    <h1>🎬 Movie Collection</h1>
+
+    <h2>Add a Movie</h2>
+    <form id="movieForm">
+        <input type="text"   id="title" placeholder="Title" required>
+        <input type="text"   id="genre" placeholder="Genre" required>
+        <input type="number" id="year"  placeholder="Year"  required>
+        <button type="submit">Add Movie</button>
+    </form>
+    <p id="message"></p>
+
+    <h2>Movie List</h2>
+    <button onclick="loadMovies()">Refresh List</button>
+    <ul id="movieList"></ul>
+
+    <script>
+        const API_URL = "/api/movies";
+        async function loadMovies() {
+            const list = document.getElementById("movieList");
+            list.innerHTML = "<li class='empty'>Loading...</li>";
+
+            try {
+                const response = await fetch(API_URL);
+                const movies = await response.json();
+
+                list.innerHTML = "";
+
+                if (movies.length === 0) {
+                    list.innerHTML = "<li class='empty'>No movies yet.</li>";
+                    return;
+                }
+
+                movies.forEach(movie => {
+                    const item = document.createElement("li");
+                    item.textContent =
+                        `${movie.id}. ${movie.title} (${movie.year}) — ${movie.genre}`;
+                    list.appendChild(item);
+                });
+            } catch (error) {
+                list.innerHTML = "<li class='error'>Failed to load movies.</li>";
+                console.error(error);
+            }
+        }
+        document.getElementById("movieForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const title = document.getElementById("title").value.trim();
+            const genre = document.getElementById("genre").value.trim();
+            const year  = document.getElementById("year").value.trim();
+            const msg   = document.getElementById("message");
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ title, genre, year })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    msg.className = "error";
+                    msg.textContent = data.message +
+                        (data.missing ? ` (missing: ${data.missing.join(", ")})` : "");
+                    return;
+                }
+
+                msg.className = "success";
+                msg.textContent = `"${data.movie.title}" added successfully!`;
+
+                // Clear the form
+                document.getElementById("movieForm").reset();
+
+                // Refresh the list
+                loadMovies();
+            } catch (error) {
+                msg.className = "error";
+                msg.textContent = "Failed to add movie.";
+                console.error(error);
+            }
+        });
+        loadMovies();
+    </script>
+</body>
+</html>
